@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="R8米在庫管理" />
+  <title>R8年産 米 在庫・注文管理</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; margin: 0; padding: 16px; background: #f5f6f4; color: #1f2421; }
+    h1 { font-size: 1.25rem; margin: 0 0 12px; }
+    .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    select, input, button { font-size: 1rem; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd2cb; }
+    button { background: #2d6a4f; color: #fff; border: none; font-weight: 600; cursor: pointer; }
+    .item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eef0ee; }
+    .item:last-child { border-bottom: none; }
+    .muted { color: #5c665f; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>R8年産 米 在庫・注文管理</h1>
+
+  <div class="card">
+    <div class="muted">注文・出荷登録</div>
+    <div class="row">
+      <select id="variety">
+        <option value="つや姫">つや姫</option>
+        <option value="雪若丸">雪若丸</option>
+        <option value="はえぬき">はえぬき</option>
+      </select>
+      <select id="process">
+        <option value="玄米">玄米</option>
+        <option value="白米">白米</option>
+        <option value="無洗米">無洗米</option>
+      </select>
+      <select id="channel">
+        <option value="メルカリ">メルカリ</option>
+        <option value="直売">直売</option>
+      </select>
+    </div>
+    <div class="row">
+      <input id="qty" type="number" min="1" value="1" style="width: 80px;" />
+      <input id="note" type="text" placeholder="メモ（例：5kg袋・発送済など）" style="flex: 1; min-width: 140px;" />
+      <button id="addBtn" type="button">記録する</button>
+    </div>
+    <div id="status" class="muted">Firebase設定を確認してください。</div>
+  </div>
+
+  <div class="card">
+    <div class="muted">記録一覧（リアルタイム同期）</div>
+    <div id="list"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // ご自身のFirebaseプロジェクト設定に書き換えてください
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const statusEl = document.getElementById("status");
+    const listEl = document.getElementById("list");
+    let records = [];
+
+    function render() {
+      listEl.innerHTML = "";
+      if (!records.length) {
+        listEl.innerHTML = '<div class="muted">まだ記録がありません。</div>';
+        return;
+      }
+      for (const r of records) {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div><strong>${r.variety}</strong>・${r.process}（${r.channel}）<div class="muted">${r.note || ""}</div></div><div><strong>${r.qty}</strong>点</div>`;
+        listEl.appendChild(div);
+      }
+    }
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const colRef = collection(db, "r8_rice_orders");
+      const q = query(colRef, orderBy("createdAt", "desc"));
+
+      onSnapshot(q, (snap) => {
+        records = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        statusEl.textContent = "Firestoreと接続中（リアルタイム同期有効）";
+        render();
+      }, (err) => {
+        statusEl.textContent = "Firestore接続エラー: " + err.message;
+      });
+
+      document.getElementById("addBtn").addEventListener("click", async () => {
+        const variety = document.getElementById("variety").value;
+        const process = document.getElementById("process").value;
+        const channel = document.getElementById("channel").value;
+        const qty = Number(document.getElementById("qty").value) || 1;
+        const note = document.getElementById("note").value.trim();
+
+        await addDoc(colRef, { variety, process, channel, qty, note, createdAt: serverTimestamp() });
+        document.getElementById("note").value = "";
+      });
+    } catch (e) {
+      statusEl.textContent = "初期化エラー: " + e.message;
+      render();
+    }
+  </script>
+</body>
+</html>
