@@ -4,114 +4,437 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="R8米在庫管理" />
   <title>R8年産 米 在庫・注文管理</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; margin: 0; padding: 16px; background: #f5f6f4; color: #1f2421; }
-    h1 { font-size: 1.25rem; margin: 0 0 12px; }
-    .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-    select, input, button { font-size: 1rem; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd2cb; }
-    button { background: #2d6a4f; color: #fff; border: none; font-weight: 600; cursor: pointer; }
-    .item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eef0ee; }
-    .item:last-child { border-bottom: none; }
-    .muted { color: #5c665f; font-size: 0.85rem; }
+    :root {
+      --bg: #f4f6f3;
+      --card: #ffffff;
+      --text: #1c221e;
+      --muted: #5d6760;
+      --primary: #2b6cb0;
+      --green: #2d6a4f;
+      --green-light: #edf6f1;
+      --warn: #b45309;
+      --warn-light: #fef3c7;
+      --border: #dfe4de;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      margin: 0;
+      padding: 14px;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 40px;
+    }
+    h1 {
+      font-size: 1.25rem;
+      margin: 4px 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--green-light);
+      color: var(--green);
+      font-weight: 600;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .stock-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 420px) {
+      .stock-grid { grid-template-columns: 1fr; }
+    }
+    .stock-box {
+      background: #fafbf9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .stock-variety {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+    .stock-kg {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--green);
+    }
+    .stock-bags {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .stock-box.low {
+      background: var(--warn-light);
+      border-color: #fcd34d;
+    }
+    .stock-box.low .stock-kg {
+      color: var(--warn);
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    select, input, button {
+      font-size: 0.95rem;
+      padding: 9px 10px;
+      border-radius: 9px;
+      border: 1px solid #c7d0c9;
+      background: #fff;
+      color: var(--text);
+    }
+    select, input { flex: 1; min-width: 90px; }
+    button {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button.secondary {
+      background: #4a5568;
+    }
+    button.small {
+      padding: 5px 8px;
+      font-size: 0.78rem;
+      border-radius: 7px;
+      margin-top: 6px;
+      width: 100%;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eef1ed;
+    }
+    .order-item:last-child { border-bottom: none; }
+    .order-main { font-weight: 700; font-size: 0.92rem; }
+    .order-sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .order-right { text-align: right; white-space: nowrap; }
+    .order-kg { font-weight: 800; color: var(--green); font-size: 0.95rem; }
   </style>
 </head>
 <body>
-  <h1>R8年産 米 在庫・注文管理</h1>
+  <h1>
+    <span>R8年産 米 在庫・注文管理</span>
+    <span id="connBadge" class="badge">接続中...</span>
+  </h1>
 
+  <!-- 品種別 在庫一覧 -->
   <div class="card">
-    <div class="muted">注文・出荷登録</div>
+    <div class="section-title">品種ごとの現在庫（30kg袋換算表示）</div>
+    <div id="stockGrid" class="stock-grid"></div>
+    <div id="status" class="status">Firestoreに接続しています...</div>
+  </div>
+
+  <!-- 注文・出荷登録（在庫から自動引き算） -->
+  <div class="card">
+    <div class="section-title">注文・出荷登録（在庫から自動減算）</div>
     <div class="row">
-      <select id="variety">
+      <select id="orderVariety">
         <option value="つや姫">つや姫</option>
         <option value="雪若丸">雪若丸</option>
         <option value="はえぬき">はえぬき</option>
       </select>
-      <select id="process">
+      <select id="orderProcess">
         <option value="玄米">玄米</option>
         <option value="白米">白米</option>
         <option value="無洗米">無洗米</option>
       </select>
-      <select id="channel">
+      <select id="orderChannel">
         <option value="メルカリ">メルカリ</option>
         <option value="直売">直売</option>
       </select>
     </div>
     <div class="row">
-      <input id="qty" type="number" min="1" value="1" style="width: 80px;" />
-      <input id="note" type="text" placeholder="メモ（例：5kg袋・発送済など）" style="flex: 1; min-width: 140px;" />
-      <button id="addBtn" type="button">記録する</button>
+      <select id="orderUnitKg">
+        <option value="5">5kg / 袋</option>
+        <option value="10">10kg / 袋</option>
+        <option value="30">30kg / 袋</option>
+        <option value="custom">kg直接入力</option>
+      </select>
+      <input id="orderCustomKg" type="number" step="0.1" min="0.1" placeholder="1点あたりkg" style="display:none;" />
+      <input id="orderQty" type="number" min="1" value="1" placeholder="袋数・点" />
     </div>
-    <div id="status" class="muted">Firebase設定を確認してください。</div>
+    <div class="row">
+      <input id="orderNote" type="text" placeholder="メモ（購入者名・発送状況など任意）" />
+      <button id="orderBtn" type="button">注文記録（在庫減）</button>
+    </div>
   </div>
 
+  <!-- 在庫追加（入庫登録） -->
   <div class="card">
-    <div class="muted">記録一覧（リアルタイム同期）</div>
-    <div id="list"></div>
+    <div class="section-title">在庫追加（収穫・袋詰め入庫）</div>
+    <div class="row">
+      <select id="inVariety">
+        <option value="つや姫">つや姫</option>
+        <option value="雪若丸">雪若丸</option>
+        <option value="はえぬき">はえぬき</option>
+      </select>
+      <select id="inUnitKg">
+        <option value="30">30kg袋</option>
+        <option value="10">10kg袋</option>
+        <option value="5">5kg袋</option>
+        <option value="1">1kg単位</option>
+      </select>
+      <input id="inCount" type="number" min="1" value="1" placeholder="数量" />
+      <button id="inBtn" type="button" class="secondary">在庫追加</button>
+    </div>
+  </div>
+
+  <!-- 注文履歴 -->
+  <div class="card">
+    <div class="section-title">注文・出荷履歴（リアルタイム同期）</div>
+    <div id="orderList"><div class="muted">読み込み中...</div></div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore, collection, doc, setDoc, addDoc, onSnapshot,
+      query, orderBy, limit, runTransaction, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // ご自身のFirebaseプロジェクト設定に書き換えてください
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyAE4XaoK6i1u8wReQLdFFZbSmdq6Fhw1pw",
+      authDomain: "r8nensan-rises.firebaseapp.com",
+      projectId: "r8nensan-rises",
+      storageBucket: "r8nensan-rises.firebasestorage.app",
+      messagingSenderId: "958404842971",
+      appId: "1:958404842971:web:d70a535d39dcc59a9d43fe",
+      measurementId: "G-SP2987GLCM"
     };
 
-    const statusEl = document.getElementById("status");
-    const listEl = document.getElementById("list");
-    let records = [];
+    const VARIETIES = ["つや姫", "雪若丸", "はえぬき"];
 
-    function render() {
-      listEl.innerHTML = "";
-      if (!records.length) {
-        listEl.innerHTML = '<div class="muted">まだ記録がありません。</div>';
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const stockGridEl = document.getElementById("stockGrid");
+    const orderListEl = document.getElementById("orderList");
+    const statusEl = document.getElementById("status");
+    const badgeEl = document.getElementById("connBadge");
+
+    const unitSelectEl = document.getElementById("orderUnitKg");
+    const customKgEl = document.getElementById("orderCustomKg");
+    unitSelectEl.addEventListener("change", () => {
+      customKgEl.style.display = unitSelectEl.value === "custom" ? "block" : "none";
+    });
+
+    let stocks = {
+      "つや姫": 0,
+      "雪若丸": 0,
+      "はえぬき": 0
+    };
+
+    function formatKg(val) {
+      const num = Number(val) || 0;
+      return Number.isInteger(num) ? `${num}kg` : `${num.toFixed(1)}kg`;
+    }
+
+    function renderStocks() {
+      stockGridEl.innerHTML = "";
+      for (const v of VARIETIES) {
+        const kg = Number(stocks[v] ?? 0);
+        const bags30 = (kg / 30).toFixed(1);
+        const isLow = kg <= 30;
+        const box = document.createElement("div");
+        box.className = `stock-box ${isLow ? "low" : ""}`;
+        box.innerHTML = `
+          <div class="stock-variety">${v}</div>
+          <div class="stock-kg">${formatKg(kg)}</div>
+          <div class="stock-bags">30kg袋換算: ${bags30}袋</div>
+          <button type="button" class="secondary small" data-adjust="${v}">kgを直接修正</button>
+        `;
+        stockGridEl.appendChild(box);
+      }
+
+      document.querySelectorAll("[data-adjust]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const v = btn.getAttribute("data-adjust");
+          const current = Number(stocks[v] ?? 0);
+          const input = prompt(`${v} の現在庫（kg）を入力してください`, String(current));
+          if (input === null) return;
+          const nextKg = Number(input);
+          if (Number.isNaN(nextKg) || nextKg < 0) {
+            alert("0以上の数値を入力してください。");
+            return;
+          }
+          await setDoc(doc(db, "r8_rice_stocks", v), {
+            variety: v,
+            weightKg: nextKg,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
+      });
+    }
+
+    renderStocks();
+
+    // 在庫のリアルタイム監視
+    onSnapshot(collection(db, "r8_rice_stocks"), (snap) => {
+      snap.forEach((d) => {
+        const data = d.data();
+        if (VARIETIES.includes(d.id)) {
+          stocks[d.id] = Number(data.weightKg ?? 0);
+        }
+      });
+      badgeEl.textContent = "同期中";
+      statusEl.textContent = "Firestoreとリアルタイム同期しています。";
+      renderStocks();
+    }, (err) => {
+      badgeEl.textContent = "要ルール確認";
+      statusEl.textContent = "読み込みエラー: " + err.message;
+    });
+
+    // 注文履歴のリアルタイム監視
+    const ordersQ = query(collection(db, "r8_rice_orders"), orderBy("createdAt", "desc"), limit(30));
+    onSnapshot(ordersQ, (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (!items.length) {
+        orderListEl.innerHTML = '<div class="muted">まだ注文記録はありません。</div>';
         return;
       }
-      for (const r of records) {
+      orderListEl.innerHTML = "";
+      for (const item of items) {
         const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<div><strong>${r.variety}</strong>・${r.process}（${r.channel}）<div class="muted">${r.note || ""}</div></div><div><strong>${r.qty}</strong>点</div>`;
-        listEl.appendChild(div);
+        div.className = "order-item";
+        div.innerHTML = `
+          <div>
+            <div class="order-main">${item.variety}・${item.process}（${item.channel}）</div>
+            <div class="order-sub">${item.qty}点 × ${formatKg(item.unitKg)}${item.note ? " ／ " + item.note : ""}</div>
+          </div>
+          <div class="order-right">
+            <div class="order-kg">-${formatKg(item.totalKg)}</div>
+          </div>
+        `;
+        orderListEl.appendChild(div);
       }
-    }
+    });
 
-    try {
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const colRef = collection(db, "r8_rice_orders");
-      const q = query(colRef, orderBy("createdAt", "desc"));
+    // 注文登録＆在庫自動減算
+    const orderBtn = document.getElementById("orderBtn");
+    orderBtn.addEventListener("click", async () => {
+      const variety = document.getElementById("orderVariety").value;
+      const process = document.getElementById("orderProcess").value;
+      const channel = document.getElementById("orderChannel").value;
+      const qty = Math.max(1, Number(document.getElementById("orderQty").value) || 1);
+      const unitKg = unitSelectEl.value === "custom"
+        ? Number(customKgEl.value)
+        : Number(unitSelectEl.value);
+      const note = document.getElementById("orderNote").value.trim();
 
-      onSnapshot(q, (snap) => {
-        records = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        statusEl.textContent = "Firestoreと接続中（リアルタイム同期有効）";
-        render();
-      }, (err) => {
-        statusEl.textContent = "Firestore接続エラー: " + err.message;
-      });
+      if (!unitKg || unitKg <= 0) {
+        alert("1点あたりの重さ（kg）を正しく入力してください。");
+        return;
+      }
+      const totalKg = Number((qty * unitKg).toFixed(2));
 
-      document.getElementById("addBtn").addEventListener("click", async () => {
-        const variety = document.getElementById("variety").value;
-        const process = document.getElementById("process").value;
-        const channel = document.getElementById("channel").value;
-        const qty = Number(document.getElementById("qty").value) || 1;
-        const note = document.getElementById("note").value.trim();
+      orderBtn.disabled = true;
+      try {
+        const stockRef = doc(db, "r8_rice_stocks", variety);
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(stockRef);
+          const currentKg = snap.exists() ? Number(snap.data().weightKg ?? 0) : 0;
+          const nextKg = Number((currentKg - totalKg).toFixed(2));
+          tx.set(stockRef, {
+            variety,
+            weightKg: nextKg,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
 
-        await addDoc(colRef, { variety, process, channel, qty, note, createdAt: serverTimestamp() });
-        document.getElementById("note").value = "";
-      });
-    } catch (e) {
-      statusEl.textContent = "初期化エラー: " + e.message;
-      render();
-    }
+        await addDoc(collection(db, "r8_rice_orders"), {
+          variety,
+          process,
+          channel,
+          qty,
+          unitKg,
+          totalKg,
+          note,
+          createdAt: serverTimestamp()
+        });
+
+        document.getElementById("orderNote").value = "";
+        document.getElementById("orderQty").value = "1";
+        statusEl.textContent = `${variety} の在庫を ${formatKg(totalKg)} 減らし、注文を記録しました。`;
+      } catch (e) {
+        alert("保存エラー（Firestoreのルール設定をご確認ください）: " + e.message);
+      } finally {
+        orderBtn.disabled = false;
+      }
+    });
+
+    // 在庫追加（入庫）
+    const inBtn = document.getElementById("inBtn");
+    inBtn.addEventListener("click", async () => {
+      const variety = document.getElementById("inVariety").value;
+      const unitKg = Number(document.getElementById("inUnitKg").value);
+      const count = Math.max(1, Number(document.getElementById("inCount").value) || 1);
+      const addKg = Number((unitKg * count).toFixed(2));
+
+      inBtn.disabled = true;
+      try {
+        const stockRef = doc(db, "r8_rice_stocks", variety);
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(stockRef);
+          const currentKg = snap.exists() ? Number(snap.data().weightKg ?? 0) : 0;
+          tx.set(stockRef, {
+            variety,
+            weightKg: Number((currentKg + addKg).toFixed(2)),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
+        document.getElementById("inCount").value = "1";
+        statusEl.textContent = `${variety} に ${formatKg(addKg)} を追加しました。`;
+      } catch (e) {
+        alert("在庫追加エラー: " + e.message);
+      } finally {
+        inBtn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>
