@@ -61,39 +61,48 @@
     }
     .stock-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    @media (max-width: 420px) {
-      .stock-grid { grid-template-columns: 1fr; }
+      grid-template-columns: 1fr;
+      gap: 10px;
     }
     .stock-box {
       background: #fafbf9;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
     }
     .stock-variety {
+      font-weight: 800;
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+    }
+
+    /* 左右2分割レイアウト（左：一般客用 / 右：お取り置き客用） */
+    .split-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .split-col {
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 9px;
+      padding: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .col-label {
+      font-size: 0.78rem;
       font-weight: 700;
-      font-size: 1rem;
-      margin-bottom: 4px;
+      color: #374151;
+      margin-bottom: 3px;
     }
     .stock-kg {
-      font-size: 1.2rem;
+      font-size: 1.18rem;
       font-weight: 800;
       color: var(--green);
     }
     .stock-bags {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--muted);
       margin-top: 2px;
-    }
-    .stock-box.low {
-      background: var(--warn-light);
-      border-color: #fcd34d;
-    }
-    .stock-box.low .stock-kg {
-      color: var(--warn);
     }
 
     /* 品種別カードカラー */
@@ -152,8 +161,8 @@
       background: #4a5568;
     }
     button.small {
-      padding: 6px 8px;
-      font-size: 0.8rem;
+      padding: 6px 6px;
+      font-size: 0.75rem;
       border-radius: 7px;
       margin-top: 6px;
       width: 100%;
@@ -184,6 +193,16 @@
     .order-sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
     .order-right { text-align: right; white-space: nowrap; }
     .order-kg { font-weight: 800; color: var(--green); font-size: 0.95rem; }
+    .tag-type {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 1px 6px;
+      border-radius: 5px;
+      background: #edf2f7;
+      color: #2d3748;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -192,7 +211,7 @@
     <span id="connBadge" class="badge">接続中...</span>
   </h1>
 
-  <!-- 品種別 在庫一覧 -->
+  <!-- 品種別 在庫一覧（左：一般客用 / 右：お取り置き客用） -->
   <div class="card">
     <div class="section-title">品種ごとの現在庫（30kg袋換算表示）</div>
     <div id="stockGrid" class="stock-grid"></div>
@@ -208,6 +227,12 @@
         <option value="雪若丸">雪若丸</option>
         <option value="はえぬき">はえぬき</option>
       </select>
+      <select id="orderStockType">
+        <option value="general">一般客用</option>
+        <option value="reserved">お取り置き客用</option>
+      </select>
+    </div>
+    <div class="row">
       <select id="orderProcess">
         <option value="玄米">玄米</option>
         <option value="白米">白米</option>
@@ -243,6 +268,12 @@
         <option value="雪若丸">雪若丸</option>
         <option value="はえぬき">はえぬき</option>
       </select>
+      <select id="inStockType">
+        <option value="general">一般客用</option>
+        <option value="reserved">お取り置き客用</option>
+      </select>
+    </div>
+    <div class="row">
       <select id="inUnitKg">
         <option value="30">30kg袋</option>
         <option value="10">10kg袋</option>
@@ -293,10 +324,11 @@
       customKgEl.style.display = unitSelectEl.value === "custom" ? "block" : "none";
     });
 
+    // general: 一般客用 / reserved: お取り置き客用
     let stocks = {
-      "つや姫": 0,
-      "雪若丸": 0,
-      "はえぬき": 0
+      "つや姫": { general: 0, reserved: 0 },
+      "雪若丸": { general: 0, reserved: 0 },
+      "はえぬき": { general: 0, reserved: 0 }
     };
 
     function formatKg(val) {
@@ -314,17 +346,30 @@
     function renderStocks() {
       stockGridEl.innerHTML = "";
       for (const v of VARIETIES) {
-        const kg = Number(stocks[v] ?? 0);
-        const bags30 = (kg / 30).toFixed(1);
-        const isLow = kg <= 30;
+        const genKg = Number(stocks[v]?.general ?? 0);
+        const resKg = Number(stocks[v]?.reserved ?? 0);
+        const genBags = (genKg / 30).toFixed(1);
+        const resBags = (resKg / 30).toFixed(1);
         const varietyClass = getVarietyClass(v);
+
         const box = document.createElement("div");
-        box.className = `stock-box ${varietyClass} ${isLow ? "low" : ""}`;
+        box.className = `stock-box ${varietyClass}`;
         box.innerHTML = `
           <div class="stock-variety">${v}</div>
-          <div class="stock-kg">${formatKg(kg)}</div>
-          <div class="stock-bags">30kg袋換算: ${bags30}袋</div>
-          <button type="button" class="secondary small" data-adjust="${v}">kgを直接修正</button>
+          <div class="split-cols">
+            <div class="split-col">
+              <div class="col-label">一般客用</div>
+              <div class="stock-kg">${formatKg(genKg)}</div>
+              <div class="stock-bags">30kg換算: ${genBags}袋</div>
+              <button type="button" class="secondary small" data-adjust="${v}" data-type="general">修正</button>
+            </div>
+            <div class="split-col">
+              <div class="col-label">お取り置き客用</div>
+              <div class="stock-kg">${formatKg(resKg)}</div>
+              <div class="stock-bags">30kg換算: ${resBags}袋</div>
+              <button type="button" class="secondary small" data-adjust="${v}" data-type="reserved">修正</button>
+            </div>
+          </div>
         `;
         stockGridEl.appendChild(box);
       }
@@ -332,17 +377,20 @@
       document.querySelectorAll("[data-adjust]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const v = btn.getAttribute("data-adjust");
-          const current = Number(stocks[v] ?? 0);
-          const input = prompt(`${v} の現在庫（kg）を入力してください`, String(current));
+          const type = btn.getAttribute("data-type");
+          const label = type === "reserved" ? "お取り置き客用" : "一般客用";
+          const current = Number(stocks[v]?.[type] ?? 0);
+          const input = prompt(`${v}（${label}）の現在庫（kg）を入力してください`, String(current));
           if (input === null) return;
           const nextKg = Number(input);
           if (Number.isNaN(nextKg) || nextKg < 0) {
             alert("0以上の数値を入力してください。");
             return;
           }
+          const fieldName = type === "reserved" ? "reservedWeightKg" : "weightKg";
           await setDoc(doc(db, "r8_rice_stocks", v), {
             variety: v,
-            weightKg: nextKg,
+            [fieldName]: nextKg,
             updatedAt: serverTimestamp()
           }, { merge: true });
         });
@@ -356,7 +404,10 @@
       snap.forEach((d) => {
         const data = d.data();
         if (VARIETIES.includes(d.id)) {
-          stocks[d.id] = Number(data.weightKg ?? 0);
+          stocks[d.id] = {
+            general: Number(data.weightKg ?? 0),
+            reserved: Number(data.reservedWeightKg ?? 0)
+          };
         }
       });
       badgeEl.textContent = "同期中";
@@ -377,11 +428,12 @@
       }
       orderListEl.innerHTML = "";
       for (const item of items) {
+        const typeLabel = item.stockType === "reserved" ? "お取り置き客用" : "一般客用";
         const div = document.createElement("div");
         div.className = "order-item";
         div.innerHTML = `
           <div>
-            <div class="order-main">${item.variety}・${item.process}（${item.channel}）</div>
+            <div class="order-main">${item.variety}・${item.process}（${item.channel}）<span class="tag-type">${typeLabel}</span></div>
             <div class="order-sub">${item.qty}点 × ${formatKg(item.unitKg)}${item.note ? " ／ " + item.note : ""}</div>
           </div>
           <div class="order-right">
@@ -401,6 +453,7 @@
     const orderBtn = document.getElementById("orderBtn");
     orderBtn.addEventListener("click", async () => {
       const variety = document.getElementById("orderVariety").value;
+      const stockType = document.getElementById("orderStockType").value;
       const process = document.getElementById("orderProcess").value;
       const channel = document.getElementById("orderChannel").value;
       const qty = Math.max(1, Number(document.getElementById("orderQty").value) || 1);
@@ -414,23 +467,26 @@
         return;
       }
       const totalKg = Number((qty * unitKg).toFixed(2));
+      const fieldName = stockType === "reserved" ? "reservedWeightKg" : "weightKg";
+      const typeLabel = stockType === "reserved" ? "お取り置き客用" : "一般客用";
 
       orderBtn.disabled = true;
       try {
         const stockRef = doc(db, "r8_rice_stocks", variety);
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(stockRef);
-          const currentKg = snap.exists() ? Number(snap.data().weightKg ?? 0) : 0;
+          const currentKg = snap.exists() ? Number(snap.data()[fieldName] ?? 0) : 0;
           const nextKg = Number((currentKg - totalKg).toFixed(2));
           tx.set(stockRef, {
             variety,
-            weightKg: nextKg,
+            [fieldName]: nextKg,
             updatedAt: serverTimestamp()
           }, { merge: true });
         });
 
         await addDoc(collection(db, "r8_rice_orders"), {
           variety,
+          stockType,
           process,
           channel,
           qty,
@@ -442,9 +498,9 @@
 
         document.getElementById("orderNote").value = "";
         document.getElementById("orderQty").value = "1";
-        statusEl.textContent = `${variety} の在庫を ${formatKg(totalKg)} 減らし、注文を記録しました。`;
+        statusEl.textContent = `${variety}（${typeLabel}）の在庫を ${formatKg(totalKg)} 減らし、注文を記録しました。`;
       } catch (e) {
-        alert("保存エラー（Firestoreのルール設定をご確認ください）: " + e.message);
+        alert("保存エラー: " + e.message);
       } finally {
         orderBtn.disabled = false;
       }
@@ -454,24 +510,27 @@
     const inBtn = document.getElementById("inBtn");
     inBtn.addEventListener("click", async () => {
       const variety = document.getElementById("inVariety").value;
+      const stockType = document.getElementById("inStockType").value;
       const unitKg = Number(document.getElementById("inUnitKg").value);
       const count = Math.max(1, Number(document.getElementById("inCount").value) || 1);
       const addKg = Number((unitKg * count).toFixed(2));
+      const fieldName = stockType === "reserved" ? "reservedWeightKg" : "weightKg";
+      const typeLabel = stockType === "reserved" ? "お取り置き客用" : "一般客用";
 
       inBtn.disabled = true;
       try {
         const stockRef = doc(db, "r8_rice_stocks", variety);
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(stockRef);
-          const currentKg = snap.exists() ? Number(snap.data().weightKg ?? 0) : 0;
+          const currentKg = snap.exists() ? Number(snap.data()[fieldName] ?? 0) : 0;
           tx.set(stockRef, {
             variety,
-            weightKg: Number((currentKg + addKg).toFixed(2)),
+            [fieldName]: Number((currentKg + addKg).toFixed(2)),
             updatedAt: serverTimestamp()
           }, { merge: true });
         });
         document.getElementById("inCount").value = "1";
-        statusEl.textContent = `${variety} に ${formatKg(addKg)} を追加しました。`;
+        statusEl.textContent = `${variety}（${typeLabel}）に ${formatKg(addKg)} を追加しました。`;
       } catch (e) {
         alert("在庫追加エラー: " + e.message);
       } finally {
