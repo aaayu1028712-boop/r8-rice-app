@@ -96,8 +96,8 @@
       color: var(--warn);
     }
     .v-tsuyahime { background: #fff5f5 !important; border-color: #feb2b2 !important; color: #c53030 !important; }
-.v-yukiwakamaru { background: #f0fff4 !important; border-color: #9ae6b4 !important; color: #2f855a !important; }
-.v-haenuki { background: #ebf8ff !important; border-color: #90cdf4 !important; color: #2b6cb0 !important; }
+    .v-yukiwakamaru { background: #f0fff4 !important; border-color: #9ae6b4 !important; color: #2f855a !important; }
+    .v-haenuki { background: #ebf8ff !important; border-color: #90cdf4 !important; color: #2b6cb0 !important; }
 
     .row {
       display: flex;
@@ -238,7 +238,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
-      getFirestore, collection, doc, setDoc, addDoc, onSnapshot,
+      getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot,
       query, orderBy, limit, runTransaction, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -353,15 +353,14 @@
           </div>
           <div class="order-right">
             <div class="order-kg">-${formatKg(item.totalKg)}</div>
+            <button type="button" data-del="${item.id}" style="margin-top:6px;padding:4px 8px;font-size:0.75rem;background:#c53030;">削除</button>
           </div>
         `;
-        <button type="button" data-del="${item.id}" style="margin-left:6px;padding:4px 8px;font-size:0.75rem;background:#c53030;">削除</button>
         orderListEl.appendChild(div);
         div.querySelector("[data-del]").onclick = async () => {
-  if (!confirm("この履歴を削除しますか？")) return;
-  await deleteDoc(doc(db, "r8_rice_orders", item.id));
-};
-
+          if (!confirm("この履歴を削除しますか？")) return;
+          await deleteDoc(doc(db, "r8_rice_orders", item.id));
+        };
       }
     });
 
