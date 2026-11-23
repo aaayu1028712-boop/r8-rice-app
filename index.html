@@ -75,16 +75,16 @@
     }
     .stock-variety {
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 1rem;
       margin-bottom: 4px;
     }
     .stock-kg {
-      font-size: 1.15rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--green);
     }
     .stock-bags {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: var(--muted);
       margin-top: 2px;
     }
@@ -95,9 +95,34 @@
     .stock-box.low .stock-kg {
       color: var(--warn);
     }
-    .v-tsuyahime { background: #fff5f5 !important; border-color: #feb2b2 !important; color: #c53030 !important; }
-    .v-yukiwakamaru { background: #f0fff4 !important; border-color: #9ae6b4 !important; color: #2f855a !important; }
-    .v-haenuki { background: #ebf8ff !important; border-color: #90cdf4 !important; color: #2b6cb0 !important; }
+
+    /* 品種別カードカラー */
+    .v-tsuyahime {
+      background: #fff5f5 !important;
+      border-color: #fc8181 !important;
+    }
+    .v-tsuyahime .stock-variety,
+    .v-tsuyahime .stock-kg {
+      color: #c53030 !important;
+    }
+
+    .v-yukiwakamaru {
+      background: #f0fff4 !important;
+      border-color: #68d391 !important;
+    }
+    .v-yukiwakamaru .stock-variety,
+    .v-yukiwakamaru .stock-kg {
+      color: #276749 !important;
+    }
+
+    .v-haenuki {
+      background: #ebf8ff !important;
+      border-color: #63b3ed !important;
+    }
+    .v-haenuki .stock-variety,
+    .v-haenuki .stock-kg {
+      color: #2b6cb0 !important;
+    }
 
     .row {
       display: flex;
@@ -127,8 +152,8 @@
       background: #4a5568;
     }
     button.small {
-      padding: 5px 8px;
-      font-size: 0.78rem;
+      padding: 6px 8px;
+      font-size: 0.8rem;
       border-radius: 7px;
       margin-top: 6px;
       width: 100%;
@@ -279,14 +304,22 @@
       return Number.isInteger(num) ? `${num}kg` : `${num.toFixed(1)}kg`;
     }
 
+    function getVarietyClass(variety) {
+      if (variety === "つや姫") return "v-tsuyahime";
+      if (variety === "雪若丸") return "v-yukiwakamaru";
+      if (variety === "はえぬき") return "v-haenuki";
+      return "";
+    }
+
     function renderStocks() {
       stockGridEl.innerHTML = "";
       for (const v of VARIETIES) {
         const kg = Number(stocks[v] ?? 0);
         const bags30 = (kg / 30).toFixed(1);
         const isLow = kg <= 30;
+        const varietyClass = getVarietyClass(v);
         const box = document.createElement("div");
-        box.className = `stock-box ${isLow ? "low" : ""}`;
+        box.className = `stock-box ${varietyClass} ${isLow ? "low" : ""}`;
         box.innerHTML = `
           <div class="stock-variety">${v}</div>
           <div class="stock-kg">${formatKg(kg)}</div>
