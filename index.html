@@ -245,13 +245,13 @@
     </div>
     <div class="row">
       <select id="orderUnitKg">
-        <option value="5">5kg / 袋</option>
-        <option value="10">10kg / 袋</option>
-        <option value="30">30kg / 袋</option>
-        <option value="custom">kg直接入力</option>
+        <option value="5">5kg</option>
+        <option value="10">10kg</option>
+        <option value="15">15kg</option>
+        <option value="20">20kg</option>
+        <option value="25">25kg</option>
       </select>
-      <input id="orderCustomKg" type="number" step="0.1" min="0.1" placeholder="1点あたりkg" style="display:none;" />
-      <input id="orderQty" type="number" min="1" value="1" placeholder="袋数・点" />
+      <input id="orderCustomKg" type="number" step="0.1" min="0.1" placeholder="半端なkg手入力（任意）" />
     </div>
     <div class="row">
       <input id="orderNote" type="text" placeholder="メモ（購入者名・発送状況など任意）" />
@@ -320,9 +320,6 @@
 
     const unitSelectEl = document.getElementById("orderUnitKg");
     const customKgEl = document.getElementById("orderCustomKg");
-    unitSelectEl.addEventListener("change", () => {
-      customKgEl.style.display = unitSelectEl.value === "custom" ? "block" : "none";
-    });
 
     // general: 一般客用 / reserved: お取り置き客用
     let stocks = {
@@ -429,12 +426,13 @@
       orderListEl.innerHTML = "";
       for (const item of items) {
         const typeLabel = item.stockType === "reserved" ? "お取り置き客用" : "一般客用";
+        const subText = item.note ? `${formatKg(item.totalKg)} ／ ${item.note}` : formatKg(item.totalKg);
         const div = document.createElement("div");
         div.className = "order-item";
         div.innerHTML = `
           <div>
             <div class="order-main">${item.variety}・${item.process}（${item.channel}）<span class="tag-type">${typeLabel}</span></div>
-            <div class="order-sub">${item.qty}点 × ${formatKg(item.unitKg)}${item.note ? " ／ " + item.note : ""}</div>
+            <div class="order-sub">${subText}</div>
           </div>
           <div class="order-right">
             <div class="order-kg">-${formatKg(item.totalKg)}</div>
@@ -456,17 +454,15 @@
       const stockType = document.getElementById("orderStockType").value;
       const process = document.getElementById("orderProcess").value;
       const channel = document.getElementById("orderChannel").value;
-      const qty = Math.max(1, Number(document.getElementById("orderQty").value) || 1);
-      const unitKg = unitSelectEl.value === "custom"
-        ? Number(customKgEl.value)
-        : Number(unitSelectEl.value);
+      const customVal = customKgEl.value.trim();
+      const totalKg = customVal !== "" ? Number(customVal) : Number(unitSelectEl.value);
       const note = document.getElementById("orderNote").value.trim();
 
-      if (!unitKg || unitKg <= 0) {
-        alert("1点あたりの重さ（kg）を正しく入力してください。");
+      if (!totalKg || totalKg <= 0) {
+        alert("重さ（kg）を正しく入力してください。");
         return;
       }
-      const totalKg = Number((qty * unitKg).toFixed(2));
+      const roundedKg = Number(totalKg.toFixed(2));
       const fieldName = stockType === "reserved" ? "reservedWeightKg" : "weightKg";
       const typeLabel = stockType === "reserved" ? "お取り置き客用" : "一般客用";
 
@@ -476,7 +472,7 @@
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(stockRef);
           const currentKg = snap.exists() ? Number(snap.data()[fieldName] ?? 0) : 0;
-          const nextKg = Number((currentKg - totalKg).toFixed(2));
+          const nextKg = Number((currentKg - roundedKg).toFixed(2));
           tx.set(stockRef, {
             variety,
             [fieldName]: nextKg,
@@ -489,16 +485,16 @@
           stockType,
           process,
           channel,
-          qty,
-          unitKg,
-          totalKg,
+          qty: 1,
+          unitKg: roundedKg,
+          totalKg: roundedKg,
           note,
           createdAt: serverTimestamp()
         });
 
         document.getElementById("orderNote").value = "";
-        document.getElementById("orderQty").value = "1";
-        statusEl.textContent = `${variety}（${typeLabel}）の在庫を ${formatKg(totalKg)} 減らし、注文を記録しました。`;
+        customKgEl.value = "";
+        statusEl.textContent = `${variety}（${typeLabel}）の在庫を ${formatKg(roundedKg)} 減らし、注文を記録しました。`;
       } catch (e) {
         alert("保存エラー: " + e.message);
       } finally {
