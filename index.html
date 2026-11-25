@@ -140,6 +140,13 @@
       margin-bottom: 8px;
     }
     .row:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+      display: block;
+    }
     select, input, button {
       font-size: 0.95rem;
       padding: 9px 10px;
@@ -159,6 +166,15 @@
     }
     button.secondary {
       background: #4a5568;
+    }
+    button.mini-date {
+      background: #edf2f7;
+      color: #2d3748;
+      border: 1px solid #cbd5e0;
+      padding: 7px 8px;
+      font-size: 0.8rem;
+      flex: 1 1 calc(25% - 6px);
+      min-width: 64px;
     }
     button.small {
       padding: 6px 6px;
@@ -253,13 +269,36 @@
       </select>
       <input id="orderCustomKg" type="number" step="0.1" min="0.1" placeholder="半端なkg手入力（任意）" />
     </div>
+    <div style="margin-bottom: 8px;">
+      <label for="orderShipDate" class="field-label">発送日（カレンダー選択・クイック選択・未定も可）</label>
+      <div class="row">
+        <input id="orderShipDate" type="date" />
+      </div>
+      <div class="row">
+        <button type="button" class="mini-date" data-days="0">今日</button>
+        <button type="button" class="mini-date" data-days="1">明日</button>
+        <button type="button" class="mini-date" data-days="3">3日後</button>
+        <button type="button" class="mini-date" data-days="7">1週間後</button>
+      </div>
+      <div class="row">
+        <button type="button" class="mini-date" data-days="14">2週間後</button>
+        <button type="button" class="mini-date" data-months="1">1か月後</button>
+        <button type="button" class="mini-date" id="clearDateBtn">未定</button>
+      </div>
+    </div>
     <div class="row">
       <input id="orderNote" type="text" placeholder="メモ（購入者名・発送状況など任意）" />
       <button id="orderBtn" type="button">注文記録（在庫減）</button>
     </div>
   </div>
 
-  <!-- 在庫追加（入庫登録） -->
+  <!-- 注文履歴 -->
+  <div class="card">
+    <div class="section-title">注文・出荷履歴（リアルタイム同期）</div>
+    <div id="orderList"><div class="muted">読み込み中...</div></div>
+  </div>
+
+  <!-- 在庫追加（入庫登録・最下部） -->
   <div class="card">
     <div class="section-title">在庫追加（収穫・袋詰め入庫）</div>
     <div class="row">
@@ -283,12 +322,6 @@
       <input id="inCount" type="number" min="1" value="1" placeholder="数量" />
       <button id="inBtn" type="button" class="secondary">在庫追加</button>
     </div>
-  </div>
-
-  <!-- 注文履歴 -->
-  <div class="card">
-    <div class="section-title">注文・出荷履歴（リアルタイム同期）</div>
-    <div id="orderList"><div class="muted">読み込み中...</div></div>
   </div>
 
   <script type="module">
@@ -320,6 +353,43 @@
 
     const unitSelectEl = document.getElementById("orderUnitKg");
     const customKgEl = document.getElementById("orderCustomKg");
+    const shipDateEl = document.getElementById("orderShipDate");
+
+    function formatDateInput(dateObj) {
+      const yyyy = dateObj.getFullYear();
+      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(dateObj.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function setQuickDate({ days = 0, months = 0 }) {
+      const d = new Date();
+      if (months) {
+        d.setMonth(d.getMonth() + months);
+      }
+      if (days) {
+        d.setDate(d.getDate() + days);
+      }
+      shipDateEl.value = formatDateInput(d);
+    }
+
+    setQuickDate({ days: 0 });
+
+    document.querySelectorAll("[data-days]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setQuickDate({ days: Number(btn.getAttribute("data-days")) || 0 });
+      });
+    });
+
+    document.querySelectorAll("[data-months]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setQuickDate({ months: Number(btn.getAttribute("data-months")) || 0 });
+      });
+    });
+
+    document.getElementById("clearDateBtn").addEventListener("click", () => {
+      shipDateEl.value = "";
+    });
 
     // general: 一般客用 / reserved: お取り置き客用
     let stocks = {
@@ -426,7 +496,9 @@
       orderListEl.innerHTML = "";
       for (const item of items) {
         const typeLabel = item.stockType === "reserved" ? "お取り置き客用" : "一般客用";
-        const subText = item.note ? `${formatKg(item.totalKg)} ／ ${item.note}` : formatKg(item.totalKg);
+        const parts = [`発送日: ${item.shipDate || "未定"}`];
+        if (item.note) parts.push(item.note);
+        const subText = `${formatKg(item.totalKg)} ／ ${parts.join(" ／ ")}`;
         const div = document.createElement("div");
         div.className = "order-item";
         div.innerHTML = `
@@ -456,6 +528,7 @@
       const channel = document.getElementById("orderChannel").value;
       const customVal = customKgEl.value.trim();
       const totalKg = customVal !== "" ? Number(customVal) : Number(unitSelectEl.value);
+      const shipDate = shipDateEl.value;
       const note = document.getElementById("orderNote").value.trim();
 
       if (!totalKg || totalKg <= 0) {
@@ -488,12 +561,14 @@
           qty: 1,
           unitKg: roundedKg,
           totalKg: roundedKg,
+          shipDate,
           note,
           createdAt: serverTimestamp()
         });
 
         document.getElementById("orderNote").value = "";
         customKgEl.value = "";
+        setQuickDate({ days: 0 });
         statusEl.textContent = `${variety}（${typeLabel}）の在庫を ${formatKg(roundedKg)} 減らし、注文を記録しました。`;
       } catch (e) {
         alert("保存エラー: " + e.message);
